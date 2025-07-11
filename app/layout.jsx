@@ -1,4 +1,5 @@
 import "./globals.css"
+import { Analytics } from "@vercel/analytics/next"
 
 export const metadata = {
   title: "TaskMaster AI - Intelligent Task Management",
@@ -23,7 +24,10 @@ export default function RootLayout({ children }) {
           href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' fontSize='90'>🤖</text></svg>"
         />
       </head>
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        {children}
+        <Analytics />
+      </body>
     </html>
   )
 }

@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useRef } from "react"
 import { GoogleGenerativeAI } from "@google/generative-ai"
+import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
 
 // Initialize Gemini AI
 const genAI = new GoogleGenerativeAI("AIzaSyCcpUJqhv-Ub3NGsSWILMxbEe7WzLCbhc4")
@@ -767,6 +768,20 @@ Respond ONLY with valid JSON in this exact format:
   const filteredTasks = getFilteredTasks()
   const taskCounts = getTaskCounts()
 
+  // Helper to reorder tasks array
+  const reorder = (list, startIndex, endIndex) => {
+    const result = Array.from(list);
+    const [removed] = result.splice(startIndex, 1);
+    result.splice(endIndex, 0, removed);
+    return result;
+  };
+
+  const handleOnDragEnd = (result) => {
+    if (!result.destination) return;
+    const newTasks = reorder(tasks, result.source.index, result.destination.index);
+    setTasks(newTasks);
+  };
+
   return (
     <div className="min-h-screen bg-gray-50 dark:bg-gray-900 transition-colors duration-300">
       <div className="container mx-auto px-4 py-8 max-w-6xl">
@@ -976,111 +991,126 @@ Respond ONLY with valid JSON in this exact format:
                   </p>
                 </div>
               ) : (
-                filteredTasks.map((task, index) => (
-                  <div
-                    key={task.id}
-                    className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 
-                             transform transition-all duration-300 hover:shadow-lg"
-                    style={{
-                      animationDelay: `${index * 50}ms`,
-                    }}
-                  >
-                    <div className="flex items-start gap-3">
-                      <div className="flex-shrink-0 w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-600 dark:text-gray-400">
-                        {index + 1}
-                      </div>
-
-                      <button
-                        onClick={() => toggleTask(task.id)}
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center
-                                   transition-all duration-200 flex-shrink-0 mt-1
-                                   ${
-                                     task.completed
-                                       ? "bg-green-500 border-green-500 text-white"
-                                       : "border-gray-300 dark:border-gray-600 hover:border-green-400"
-                                   }`}
-                      >
-                        {task.completed && (
-                          <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
-                            <path
-                              fillRule="evenodd"
-                              d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                        )}
-                      </button>
-
-                      <div className="flex-1 min-w-0">
-                        {task.isEditing ? (
-                          <div className="flex gap-2">
-                            <input
-                              ref={editInputRef}
-                              type="text"
-                              defaultValue={task.text}
-                              className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded
-                                       bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
-                              onKeyPress={(e) => {
-                                if (e.key === "Enter") {
-                                  saveEdit(task.id, e.target.value)
-                                } else if (e.key === "Escape") {
-                                  cancelEdit(task.id)
-                                }
-                              }}
-                              onBlur={(e) => saveEdit(task.id, e.target.value)}
-                            />
-                            <button
-                              onClick={() => cancelEdit(task.id)}
-                              className="px-2 py-1 text-gray-500 hover:text-red-500"
-                            >
-                              ✕
-                            </button>
-                          </div>
-                        ) : (
-                          <div>
-                            <div className="flex items-center gap-2 mb-1">
-                              <span
-                                className={`text-gray-800 dark:text-gray-200 transition-all duration-200
-                                         ${task.completed ? "line-through text-gray-500 dark:text-gray-500" : ""}`}
+                <DragDropContext onDragEnd={handleOnDragEnd}>
+                  <Droppable droppableId="tasks">
+                    {(provided) => (
+                      <ul {...provided.droppableProps} ref={provided.innerRef}>
+                        {filteredTasks.map((task, index) => (
+                          <Draggable key={task.id} draggableId={String(task.id)} index={index}>
+                            {(provided) => (
+                              <li
+                                ref={provided.innerRef}
+                                {...provided.draggableProps}
+                                {...provided.dragHandleProps}
+                                className="bg-white dark:bg-gray-800 rounded-lg shadow-md p-4 
+                                         transform transition-all duration-300 hover:shadow-lg"
+                                style={{
+                                  animationDelay: `${index * 50}ms`,
+                                }}
                               >
-                                {task.text}
-                              </span>
-                              <span
-                                className={`text-xs px-2 py-1 rounded-full ${getPriorityColor(task.priority)} bg-gray-100 dark:bg-gray-700`}
-                              >
-                                {task.priority}
-                              </span>
-                              <span className="text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
-                                {task.category}
-                              </span>
-                            </div>
-                          </div>
-                        )}
-                      </div>
+                                <div className="flex items-start gap-3">
+                                  <div className="flex-shrink-0 w-8 h-8 bg-gray-100 dark:bg-gray-700 rounded-full flex items-center justify-center text-sm font-medium text-gray-600 dark:text-gray-400">
+                                    {index + 1}
+                                  </div>
 
-                      <div className="flex gap-1">
-                        <button
-                          onClick={() => startEditing(task.id)}
-                          className="p-2 text-gray-400 hover:text-blue-500 dark:text-gray-500 
-                                   dark:hover:text-blue-400 transition-colors duration-200
-                                   hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
-                          title="Edit task"
-                        >
-                          ✎
-                        </button>
-                        <button
-                          onClick={() => deleteTask(task.id)}
-                          className="p-2 text-gray-400 hover:text-red-500 dark:text-gray-500 
-                                   dark:hover:text-red-400 transition-colors duration-200
-                                   hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
-                          title="Delete task"
-                        >
-                          🗑️
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                ))
+                                  <button
+                                    onClick={() => toggleTask(task.id)}
+                                    className={`w-5 h-5 rounded border-2 flex items-center justify-center
+                                               transition-all duration-200 flex-shrink-0 mt-1
+                                               ${
+                                                 task.completed
+                                                   ? "bg-green-500 border-green-500 text-white"
+                                                   : "border-gray-300 dark:border-gray-600 hover:border-green-400"
+                                               }`}
+                                  >
+                                    {task.completed && (
+                                      <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                        <path
+                                          fillRule="evenodd"
+                                          d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
+                                          clipRule="evenodd"
+                                        />
+                                      </svg>
+                                    )}
+                                  </button>
+
+                                  <div className="flex-1 min-w-0">
+                                    {task.isEditing ? (
+                                      <div className="flex gap-2">
+                                        <input
+                                          ref={editInputRef}
+                                          type="text"
+                                          defaultValue={task.text}
+                                          className="flex-1 px-2 py-1 border border-gray-300 dark:border-gray-600 rounded
+                                                   bg-white dark:bg-gray-700 text-gray-900 dark:text-white"
+                                          onKeyPress={(e) => {
+                                            if (e.key === "Enter") {
+                                              saveEdit(task.id, e.target.value)
+                                            } else if (e.key === "Escape") {
+                                              cancelEdit(task.id)
+                                            }
+                                          }}
+                                          onBlur={(e) => saveEdit(task.id, e.target.value)}
+                                        />
+                                        <button
+                                          onClick={() => cancelEdit(task.id)}
+                                          className="px-2 py-1 text-gray-500 hover:text-red-500"
+                                        >
+                                          ✕
+                                        </button>
+                                      </div>
+                                    ) : (
+                                      <div>
+                                        <div className="flex items-center gap-2 mb-1">
+                                          <span
+                                            className={`text-gray-800 dark:text-gray-200 transition-all duration-200
+                                                     ${task.completed ? "line-through text-gray-500 dark:text-gray-500" : ""}`}
+                                          >
+                                            {task.text}
+                                          </span>
+                                          <span
+                                            className={`text-xs px-2 py-1 rounded-full ${getPriorityColor(task.priority)} bg-gray-100 dark:bg-gray-700`}
+                                          >
+                                            {task.priority}
+                                          </span>
+                                          <span className="text-xs px-2 py-1 rounded-full bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-200">
+                                            {task.category}
+                                          </span>
+                                        </div>
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  <div className="flex gap-1">
+                                    <button
+                                      onClick={() => startEditing(task.id)}
+                                      className="p-2 text-gray-400 hover:text-blue-500 dark:text-gray-500 
+                                               dark:hover:text-blue-400 transition-colors duration-200
+                                               hover:bg-blue-50 dark:hover:bg-blue-900/20 rounded-lg"
+                                      title="Edit task"
+                                    >
+                                      ✎
+                                    </button>
+                                    <button
+                                      onClick={() => deleteTask(task.id)}
+                                      className="p-2 text-gray-400 hover:text-red-500 dark:text-gray-500 
+                                               dark:hover:text-red-400 transition-colors duration-200
+                                               hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg"
+                                      title="Delete task"
+                                    >
+                                      🗑️
+                                    </button>
+                                  </div>
+                                </div>
+                              </li>
+                            )}
+                          </Draggable>
+                        ))}
+                        {provided.placeholder}
+                      </ul>
+                    )}
+                  </Droppable>
+                </DragDropContext>
               )}
             </div>
           </div>
